@@ -1,0 +1,3 @@
+Segformer:
+- https://arxiv.org/pdf/2105.15203
+- https://medium.com/geekculture/semantic-segmentation-with-segformer-2501543d2be4
