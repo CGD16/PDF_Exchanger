@@ -1,14 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import numpy as np
-
-
+# import numpy as np
 from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
 from collections import OrderedDict
 
-# from mmseg.ops import resize # steht unten
 # from ..builder import HEADS
 # from .decode_head import BaseDecodeHead
 # from mmseg.models.utils import *
@@ -16,11 +12,7 @@ from collections import OrderedDict
 
 from IPython import embed
 from SingleHeadVisiontransformer import SHViT
-
-
-
-
-from timm.layers import SqueezeExcite
+# from timm.layers import SqueezeExcite
 
 
 def resize(input,
@@ -72,7 +64,7 @@ class MLP(nn.Module):
 
 # embedding_dim = 448 # 768
 class SegFormerHead(nn.Module):
-    def __init__(self, num_classes=150, embedding_dim = 448, feature_strides=None, channels=None,  in_channels=448,  dropout_ratio=0.1, **kwargs):
+    def __init__(self, num_classes=150, embedding_dim=448, feature_strides=None, channels=None,  in_channels=448,  dropout_ratio=0.1, **kwargs):
         super(SegFormerHead, self).__init__(**kwargs)
         self.in_channels = in_channels
         c1_in_channels = self.in_channels

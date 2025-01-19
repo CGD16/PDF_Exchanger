@@ -1,21 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 import numpy as np
-
-
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from collections import OrderedDict
-
-# from mmseg.ops import resize # steht unten
-# from ..builder import HEADS
-# from .decode_head import BaseDecodeHead
-# from mmseg.models.utils import *
-# import attr
-
-from IPython import embed
 from timm.layers import SqueezeExcite
+
 
 
 class GroupNorm(torch.nn.GroupNorm):
@@ -53,10 +41,6 @@ class Conv2d_BN(torch.nn.Sequential):
 
 
 
-
-
-
-
 class BN_Linear(torch.nn.Sequential):
     def __init__(self, a, b, bias=True, std=0.02):
         super().__init__()
@@ -83,6 +67,7 @@ class BN_Linear(torch.nn.Sequential):
         return m
 
 
+
 class PatchMerging(torch.nn.Module):
     def __init__(self, dim, out_dim):
         super().__init__()
@@ -94,14 +79,9 @@ class PatchMerging(torch.nn.Module):
         self.conv3 = Conv2d_BN(hid_dim, out_dim, 1, 1, 0)
 
     def forward(self, x):
-        print("### PatchMerging ###")
-        print(x.shape)
         x = self.conv3(self.se(self.act(self.conv2(self.act(self.conv1(x))))))
-        print(x.shape)
-        print("==="*10)
+        print("PatchMerging: ", x.shape)
         return x
-
-
 
 
 
@@ -132,9 +112,6 @@ class Residual(torch.nn.Module):
 
 
 
-
-
-
 class FFN(torch.nn.Module):
     def __init__(self, ed, h):
         super().__init__()
@@ -145,10 +122,6 @@ class FFN(torch.nn.Module):
     def forward(self, x):
         x = self.pw2(self.act(self.pw1(x)))
         return x
-
-
-
-
 
 
 
@@ -166,7 +139,6 @@ class SHSA(torch.nn.Module):
         self.qkv = Conv2d_BN(pdim, qk_dim * 2 + pdim)
         self.proj = torch.nn.Sequential(torch.nn.ReLU(), Conv2d_BN(
             dim, dim, bn_weight_init = 0))
-        
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -180,11 +152,7 @@ class SHSA(torch.nn.Module):
         attn = attn.softmax(dim = -1)
         x1 = (v @ attn.transpose(-2, -1)).reshape(B, self.pdim, H, W)
         x = self.proj(torch.cat([x1, x2], dim = 1))
-
         return x
-
-
-
 
 
 
@@ -205,21 +173,14 @@ class BasicBlock(torch.nn.Module):
 
 
 
-
-
-
-
-
-
-
 class SHViT(torch.nn.Module):
     def __init__(self,
                  in_chans=3,
                  num_classes=1000,
-                 embed_dim = [224, 336, 448], # [128, 256, 384] SHVIT_
+                 embed_dim = [192, 352, 448], #  [128, 256, 384] SHVIT.py
                  partial_dim = [48, 72, 96],
                  qk_dim=[16, 16, 16],
-                 depth = [4, 7, 6],
+                 depth = [3, 5, 5],
                  types = ["i", "s", "s"],   	
                  down_ops=[['subsample', 2], ['subsample', 2], ['']],
                  distillation=False,):
@@ -263,18 +224,15 @@ class SHViT(torch.nn.Module):
             self.head_dist = BN_Linear(embed_dim[-1], num_classes) if num_classes > 0 else torch.nn.Identity()
         '''
 
-
-
-
     def forward(self, x):
         x = self.patch_embed(x)
-        print("x: ", x.shape)
+        # print("x: ", x.shape)
         x = self.blocks1(x)
-        print("block1 out: ", x.shape)
+        # print("block1 out: ", x.shape)
         x = self.blocks2(x)
-        print("block2 out: ", x.shape)
+        # print("block2 out: ", x.shape)
         x = self.blocks3(x)
-        print("block3 out: ", x.shape)
+        # print("block3 out: ", x.shape)
 
         '''
         x = torch.nn.functional.adaptive_avg_pool2d(x, 1).flatten(1)
@@ -285,51 +243,8 @@ class SHViT(torch.nn.Module):
         else:
             x = self.head(x)
         '''
+        print("Finished SHVIT")
         return x
-    
+    # =============================================== Finished SHVIT ===============================================
 
-
-    # ========================================== SegFormer - Head ==========================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # ========================================== >>> SegFormer - Head >>> ==========================================
