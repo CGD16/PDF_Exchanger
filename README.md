@@ -30,7 +30,7 @@ exit
 ```
 
 The installation of PyTorch is very easy and does not require additional installation of CUDA
-drivers or other dependencies, unlike TensorFlow. PyTorch comes with built-in CUDA support2,
+drivers or other dependencies, unlike TensorFlow. PyTorch comes with built-in CUDA support (https://pytorch.org/get-started/locally/),
 meaning it can be simply installed using pip, and it will automatically handle the necessary CUDA
 libraries.
 
@@ -42,9 +42,17 @@ conda install -c conda-forge opencv matplotlib tqdm seaborn pandas plotly lightn
 pip install torchsummary torchviz pydicom slicerio
 sudo apt-get install graphviz
 cd Documents/Python/shoes_segformer/Software/
+pip install PythonTools-3.7.0-py2.py3-none-any.whl
+conda install conda-forge::libsqlite --force-reinstall
+conda install conda-forge::sqlite --force-reinstall
 ```
 
-
+After setting up PyTorch, essential libraries like `matplotlib`, `tqdm`, `seaborn`, etc. needed for
+running the SegFormer scripts have to be installed. Additionally, `pydicom` and `slicerio` were
+included for handling the annotation les for the shoe les. To extract data from the original shoe
+volume data from the files in `.rek` dataformat, the `PythonTools` software was required.
+While running the scripts in VSCode, the kernel occasionally crashed. This issue was resolved by
+reinstalling the `sqlite` and `libsqlite` packages at the end (https://stackoverflow.com/a/79484466/27900239).
 
 
 
