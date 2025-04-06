@@ -41,7 +41,7 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 conda install -c conda-forge opencv matplotlib tqdm seaborn pandas plotly lightning
 pip install torchsummary torchviz pydicom slicerio
 sudo apt-get install graphviz
-cd Documents/Python/shoes_segformer/Software/
+cd /mnt/c/Users/USERNAME/Documents/Python/shoes_segformer/Software/
 pip install PythonTools-3.7.0-py2.py3-none-any.whl
 conda install conda-forge::libsqlite --force-reinstall
 conda install conda-forge::sqlite --force-reinstall
