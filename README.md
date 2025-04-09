@@ -25,7 +25,6 @@ cd /mnt/c/Users/USERNAME/Downloads/
 bash Miniconda3-latest-Linux-x86_64.sh
 cd ~
 ~/miniconda3/bin/conda init bash
-~/miniconda3/bin/conda init zsh
 exit
 ```
 
