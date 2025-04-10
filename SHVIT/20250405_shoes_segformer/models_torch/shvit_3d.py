@@ -401,7 +401,7 @@ class SHViT3D(nn.Module):
         
         
         layers = []
-        out_channels = in_channels  # Start with input channels
+        in_channels = in_channels  # Start with input channels
         division_factor = 2 ** (num_convs - 1)  # Adjust division based on num_convs
 
         # First convolution
@@ -414,7 +414,8 @@ class SHViT3D(nn.Module):
             in_channels = out_channels
             out_channels = embed_dims[0] // (division_factor // (2 ** (i + 1)))
             layers.append(Conv3d_BN(in_channels=in_channels, out_channels=out_channels, kernel_size=3, strides=2, padding=1))
-            layers.append(nn.ReLU())
+            if i != (num_convs - 2):
+                layers.append(nn.ReLU())
 
         self.patch_embed = nn.Sequential(*layers)        
  

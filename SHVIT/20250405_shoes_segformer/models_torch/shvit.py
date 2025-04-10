@@ -304,13 +304,19 @@ class SHSA(nn.Module):
  
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, C, H, W = x.shape
+        print("B, C, H, W: ", B, C, H, W)
+        print("self.dim, self.pdim", self.dim, self.pdim)
         x1, x2 = torch.split(x, [self.pdim, self.dim - self.pdim], dim=1)
+        print(x1.shape, x2.shape)
         x1 = self.pre_norm(x1)
         qkv = self.qkv(x1)
         q, k, v = qkv.split([self.qk_dim, self.qk_dim, self.pdim], dim=1)
+        print("q, k, v: ", q.shape, k.shape, v.shape)
         q, k, v = q.flatten(2), k.flatten(2), v.flatten(2)
-       
+        print("q, k, v: ", q.shape, k.shape, v.shape)
         attn = (q.transpose(-2, -1) @ k) * self.scale
+        print(q.transpose(-2, -1).shape)
+        print("(q.transpose(-2, -1) @ k): ", (q.transpose(-2, -1) @ k).shape)
         attn = attn.softmax(dim = -1)
         x1 = (v @ attn.transpose(-2, -1)).reshape(B, self.pdim, H, W)
         x = self.proj(torch.cat([x1, x2], dim = 1))
@@ -400,7 +406,7 @@ class SHViT(nn.Module):
  
 
         layers = []
-        out_channels = in_channels  # Start with input channels
+        in_channels = in_channels  # Start with input channels
         division_factor = 2 ** (num_convs - 1)  # Adjust division based on num_convs
 
         # First convolution
@@ -413,7 +419,8 @@ class SHViT(nn.Module):
             in_channels = out_channels
             out_channels = embed_dims[0] // (division_factor // (2 ** (i + 1)))
             layers.append(Conv2d_BN(in_channels=in_channels, out_channels=out_channels, kernel_size=3, strides=2, padding=1))
-            layers.append(nn.ReLU())
+            if i != (num_convs - 2):
+                layers.append(nn.ReLU())
 
         self.patch_embed = nn.Sequential(*layers)
         
@@ -428,6 +435,7 @@ class SHViT(nn.Module):
         blocks3 = nn.Sequential()
        
         for i, (ed, kd, pd, dpth, do, t) in enumerate(zip(self.embed_dim, self.qk_dim, self.partial_dim, self.depth, self.down_ops, self.types)):
+            print("Zähler: ", i, (ed, kd, pd, dpth, do, t))
             for d in range(dpth):
                 eval("blocks" + str(i+1)).append(BasicBlock(ed, kd, pd, t))
             if do[0] == "subsample":
