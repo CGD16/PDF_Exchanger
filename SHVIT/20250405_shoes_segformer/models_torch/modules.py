@@ -21,15 +21,23 @@ class DWConv(nn.Module):
     Outputs:
         torch.Tensor: Output tensor of shape (B, H*W, C) after applying the depth-wise convolution.
     """
-    def __init__(self, hidden_features: int=768):
+    def __init__(self, hidden_features: int=768, sw=False):
         super(DWConv, self).__init__()
+        self.sw = sw
         self.dwconv = nn.Conv2d(hidden_features, hidden_features, kernel_size=3, stride=1, padding=1,
                                 groups=hidden_features)
 
     def forward(self, x: torch.Tensor, H: int, W: int) -> torch.Tensor:
-        x = x.view(x.size(0), H, W, x.size(-1)).permute(0, 3, 1, 2)  # B, C, H, W
-        x = self.dwconv(x)
-        x = x.flatten(2).permute(0, 2, 1)  # B, H*W, C
+        if self.sw == True:
+            B, N, C = x.shape
+            x = x.transpose(1, 2).view(B, C, H, W)
+            x = self.dwconv(x)
+            x = x.flatten(2).transpose(1, 2)
+        else:
+            x = x.view(x.size(0), H, W, x.size(-1)).permute(0, 3, 1, 2)  # B, C, H, W
+            x = self.dwconv(x)
+            x = x.flatten(2).permute(0, 2, 1)  # B, H*W, C
+
         return x
 
 
@@ -41,6 +49,7 @@ class Mlp(nn.Module):
         in_features (int): The number of input features.
         hidden_features (int, optional): The number of hidden features. Defaults to in_features.
         out_features (int, optional): The number of output features. Defaults to in_features.
+        act_layer (nn, optional): The non-linear activation function that that governs how the weighted sum of the input is transformed into output. Defaults to nn.GELU()
         drop (float, optional): Dropout rate. Defaults to 0.0.
 
     Inputs:
@@ -53,14 +62,14 @@ class Mlp(nn.Module):
         torch.Tensor: Output tensor of shape (B, N, out_features) after linear projection, 
                       depth-wise convolution, activation, and dropout.
     """
-    def __init__(self, in_features: int, hidden_features: int=None, out_features: int=None, drop: float=0.0):
+    def __init__(self, in_features: int, hidden_features: int=None, out_features: int=None, act_layer = nn.GELU(), drop: float=0.0):
         super(Mlp, self).__init__()
         hidden_features = hidden_features or in_features
         out_features = out_features or in_features
 
         self.fc1 = nn.Linear(in_features, hidden_features)
         self.dwconv = DWConv(hidden_features)
-        self.act = nn.GELU()
+        self.act = act_layer()
         self.fc2 = nn.Linear(hidden_features, out_features)
         self.drop = nn.Dropout(drop)
 
@@ -218,3 +227,7 @@ class MixVisionTransformer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.forward_features(x)
+    
+
+# ==============================================================================
+# Sliding Window

@@ -271,6 +271,7 @@ class CenterAttention(nn.Module):
 
         # (B, NumHeads, H, W, HeadC)
         q = self.q_proj(x).reshape(B, H, W, self.num_heads, self.head_channel).permute(0, 3, 1, 2, 4)
+        print(q.shape)
         # q = self.pad(q).permute(0, 1, 3, 4, 2)  # (B, NumH, H, W, HeadC)
         # query need to be copied by (self.k_size*self.k_size) times
         q = q.unsqueeze(dim=4)
@@ -522,7 +523,6 @@ class simvit(nn.Module):
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
             x, H, W = patch_embed(x)
-            print(x.shape, H, W)
             for blk in block:
                 x = blk(x, H, W)
             x = norm(x)
@@ -531,12 +531,8 @@ class simvit(nn.Module):
         return x.mean(dim=1)
 
     def forward(self, x):
-        print("X0: ", x.shape)
         x = self.forward_features(x)
-        print("X1: ", x.shape)
         x = self.head(x)
-        print("X2: ", x.shape)
-
         return x
 
 
