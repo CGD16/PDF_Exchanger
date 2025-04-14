@@ -324,6 +324,51 @@ class SHSA(nn.Module):
         x = self.proj(torch.cat([x1, x2], dim = 1))
  
         return x
+    
+
+
+class SHCSA(nn.Module):
+    """
+    Single-Head Self-Attention
+ 
+    Initialization:
+        Initializes scaling factor, dimensions, normalization layer, and the query-key-value (QKV) convolutional layer,
+        along with a projection layer.
+ 
+    Args:
+        dim (int): The number of input channels.
+        qk_dim (int): The dimension of query and key tensors.
+        pdim (int): The partial dimension of the input tensor to be split and processed separately.
+       
+    Inputs:
+        x (torch.Tensor): Input tensor with shape (B, C, H, W) where B is batch size,
+                          C is the number of channels, H is height, and W is width.
+ 
+    Outputs:
+        torch.Tensor: Output tensor with the same shape as the input.        
+    """
+    def __init__(self, dim: int, qk_dim: int, pdim: int):
+        super(SHCSA, self).__init__()
+ 
+        self.scale = qk_dim ** -0.5
+        self.qk_dim = qk_dim
+        self.dim = dim
+        self.pdim = pdim
+ 
+        self.pre_norm = GroupNorm(num_channels=pdim)
+        self.qkv = Conv2d_BN(in_channels=pdim, out_channels=qk_dim*2 + pdim)
+        self.proj = nn.Sequential(nn.ReLU(), Conv2d_BN(in_channels=dim, out_channels=dim, bn_weight_init=0.0))
+        self.center_att = CenterAttention(dim=pdim)
+
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        x1, x2 = torch.split(x, [self.pdim, self.dim - self.pdim], dim=1)
+        x1 = self.pre_norm(x1)
+        x1 = self.center_att(x1)
+        x = self.proj(torch.cat([x1, x2], dim = 1))
+ 
+        return x
  
 
 class BasicBlock(nn.Module):
@@ -350,16 +395,18 @@ class BasicBlock(nn.Module):
     Outputs:
         torch.Tensor: Output tensor with the same shape as the input.
     """
-    def __init__(self, dim: int, qk_dim: int, pdim: int, block_type: str):
+    def __init__(self, dim: int, qk_dim: int, pdim: int, block_type: str, flag_last_stage: bool=False):
         super(BasicBlock, self).__init__()
         if block_type == "s":  # for later stages
             self.conv = Residual(Conv2d_BN(in_channels=dim, out_channels=dim, kernel_size=3, strides=1, padding=1, groups=dim, bn_weight_init=0.0))
-            self.mixer = Residual(SHSA(dim=dim, qk_dim=qk_dim, pdim=pdim))
-            self.mixer = Residual(Attention(dim=dim))
+            if flag_last_stage == False:
+                self.mixer = Residual(SHCSA(dim=dim, qk_dim=qk_dim, pdim=pdim))
+            else:            
+                self.mixer = Residual(SHSA(dim=dim, qk_dim=qk_dim, pdim=pdim))
             self.ffn = Residual(FFN(ed=dim, h=int(dim * 2)))
+        
         elif block_type == "i":  # for early stages
             self.conv = Residual(Conv2d_BN(in_channels=dim, out_channels=dim, kernel_size=3, strides=1, padding=1, groups=dim, bn_weight_init=0.0))
-            self.mixer = Residual(CenterAttention(dim=dim)) ################################################################################################################################################  
             self.mixer = nn.Identity()
             self.ffn = Residual(FFN(ed=dim, h=int(dim * 2)))
  
@@ -437,11 +484,19 @@ class SHViT(nn.Module):
         blocks1 = nn.Sequential()
         blocks2 = nn.Sequential()
         blocks3 = nn.Sequential()
+
+        length = len(self.embed_dims)
        
+
         for i, (ed, kd, pd, dpth, do, t) in enumerate(zip(self.embed_dim, self.qk_dim, self.partial_dim, self.depth, self.down_ops, self.types)):
-            # print("Zähler: ", i, (ed, kd, pd, dpth, do, t))
+            # print("Zähler: ", i, (ed, kd, pd, dpth, do, t))            
+            
+            flag_last_stage = False
+            if i == length - 1:
+               flag_last_stage = True 
+
             for d in range(dpth):
-                eval("blocks" + str(i+1)).append(BasicBlock(ed, kd, pd, t))
+                eval("blocks" + str(i+1)).append(BasicBlock(ed, kd, pd, t, flag_last_stage))
             if do[0] == "subsample":
                 # Build SHViT downsample block
                 blk = eval("blocks" + str(i+2))
@@ -466,7 +521,7 @@ class SHViT(nn.Module):
         if self.num_stages >= 3:
             outs.append(x)
  
-        x = self.blocks2(x)
+        x = self.blocks2(x) 
         if self.num_stages >= 2:
             outs.append(x)
  
