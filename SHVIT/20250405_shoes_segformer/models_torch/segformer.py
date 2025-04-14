@@ -174,7 +174,10 @@ class SegFormer_SHViT(nn.Module):
         self.resize_layer = ResizeLayer(input_shape[1], input_shape[2])
  
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print("SHViT initial input Shape: ", x.shape)
         x = self.shvit(x)
+        # print("SHViT: ", x)
+        # print("in_channels: ", input_shape[0]) # 3 
         x = self.seg_former_head(x)
  
         if self.use_resize:

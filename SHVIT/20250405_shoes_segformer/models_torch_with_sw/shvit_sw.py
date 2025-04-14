@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from modules import CenterAttention, Attention
+from .modules import CenterAttention, Attention
 
  
 from typing import List
@@ -358,14 +358,22 @@ class SHCSA(nn.Module):
         self.pre_norm = GroupNorm(num_channels=pdim)
         self.qkv = Conv2d_BN(in_channels=pdim, out_channels=qk_dim*2 + pdim)
         self.proj = nn.Sequential(nn.ReLU(), Conv2d_BN(in_channels=dim, out_channels=dim, bn_weight_init=0.0))
+        
         self.center_att = CenterAttention(dim=pdim)
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, C, H, W = x.shape
         x1, x2 = torch.split(x, [self.pdim, self.dim - self.pdim], dim=1)
+        # print("Shape of SHCSA: ", x1.shape, x2.shape)
+        ######################################################################################################################################################################################################
+
         x1 = self.pre_norm(x1)
-        x1 = self.center_att(x1)
+        x1 = x1.flatten(2).permute(0, 2, 1) # (1,72,28,28) -> (1,72,28*28) -> (1, 784, 72)
+        x1 = self.center_att(x=x1, H=H, W=W)
+        # print("============: ", x1.shape)
+        x1 = x1.reshape(B, H, W, self.pdim).permute(0,3,1,2) # reshape(B, C, H, W) # -> (1,72,28,28) 
+        # print("Fertig: ", x1.shape)
         x = self.proj(torch.cat([x1, x2], dim = 1))
  
         return x
@@ -418,7 +426,7 @@ class BasicBlock(nn.Module):
    
  
 #################################################################
-class SHViT(nn.Module):
+class SHViT_SW(nn.Module):
     """
     The SHViT class implements a vision transformer with hierarchical stages, patch embedding, and basic blocks.
  
@@ -444,7 +452,7 @@ class SHViT(nn.Module):
     def __init__(self, in_channels: int=3, embed_dims=[224, 336, 448], partial_dims=[48, 72, 96],
                  depths=[4, 7, 6], types=["i", "s", "s"], qk_dims=[16, 16, 16],
                  down_ops=[["subsample", 2], ["subsample", 2], [""]], num_convs: int=2, num_stages: int=3):
-        super(SHViT, self).__init__()
+        super(SHViT_SW, self).__init__()
 
         self.in_channels = in_channels
         self.embed_dim = embed_dims
@@ -485,7 +493,8 @@ class SHViT(nn.Module):
         blocks2 = nn.Sequential()
         blocks3 = nn.Sequential()
 
-        length = len(self.embed_dims)
+        
+        length = len(self.embed_dim)
        
 
         for i, (ed, kd, pd, dpth, do, t) in enumerate(zip(self.embed_dim, self.qk_dim, self.partial_dim, self.depth, self.down_ops, self.types)):

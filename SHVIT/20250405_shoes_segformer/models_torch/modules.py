@@ -62,14 +62,14 @@ class Mlp(nn.Module):
         torch.Tensor: Output tensor of shape (B, N, out_features) after linear projection, 
                       depth-wise convolution, activation, and dropout.
     """
-    def __init__(self, in_features: int, hidden_features: int=None, out_features: int=None, act_layer = nn.GELU(), drop: float=0.0):
+    def __init__(self, in_features: int, hidden_features: int=None, out_features: int=None, drop: float=0.0):
         super(Mlp, self).__init__()
         hidden_features = hidden_features or in_features
         out_features = out_features or in_features
 
         self.fc1 = nn.Linear(in_features, hidden_features)
         self.dwconv = DWConv(hidden_features)
-        self.act = act_layer()
+        self.act = nn.GELU()
         self.fc2 = nn.Linear(hidden_features, out_features)
         self.drop = nn.Dropout(drop)
 

@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models_torch.modules import MixVisionTransformer
-from models_torch.head import SegFormerHead
-from models_torch.utils import ResizeLayer
-from models_torch.shvit import SHViT
+from models_torch_with_sw.modules import MixVisionTransformer
+from models_torch_with_sw.head import SegFormerHead
+from models_torch_with_sw.utils import ResizeLayer
+from models_torch_with_sw.shvit import SHViT
+from models_torch_with_sw.shvit_sw import SHViT_SW
+
 
 MODEL_CONFIGS = {
     "mit_b0": {
@@ -156,6 +158,71 @@ class SegFormer_SHViT(nn.Module):
         self.use_resize = use_resize
  
         self.shvit = SHViT(
+            in_channels=input_shape[0],
+            embed_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["embed_dims"],
+            partial_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["partial_dims"],
+            depths=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["depths"],
+            types=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["types"],
+            num_convs=num_convs,
+            num_stages=num_stages,
+        )
+       
+        self.seg_former_head = SegFormerHead(
+            num_classes=num_classes,
+            input_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["embed_dims"][-num_stages:],
+            decode_dim=MODEL_CONFIGS[f"mit_{model_type}"]["decode_dim"],
+        )
+ 
+        self.resize_layer = ResizeLayer(input_shape[1], input_shape[2])
+ 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.shvit(x)
+        x = self.seg_former_head(x)
+ 
+        if self.use_resize:
+            x = self.resize_layer(x)
+ 
+        return F.softmax(x, dim=1).to(torch.float32)
+    
+
+
+
+
+
+class SegFormer_SHViT_SW(nn.Module):   
+    """
+    SegFormer_SHViT: A 2D segmentation model leveraging SHViT, SegFormerHead, and optional resizing.
+ 
+    Args:
+        model_type (str): Type of the model (e.g., "B0").
+        shvit_type (str): Type of the shvit config (e.g., "S4").
+        input_shape (tuple of int): Shape of the input tensor (C, H, W), where C is the number of input channels,
+                                    H is the height, and W is the width.
+        num_convs (int, optional): Number of conv2d_bn layers in head. Defaults to 2.
+        num_stages (int, optional): Number of stages (output from shvit). Defaults to 3.
+        num_classes (int, optional): Number of output classes for segmentation. Defaults to 7.
+        use_resize (bool, optional): Whether to resize the output to the input shape. Defaults to True.
+ 
+    Inputs:
+        x (torch.Tensor): Input tensor of shape (B, C, H, W), where B is the batch size, C is the number of input channels,
+                          H is the height, and W is the width.
+ 
+    Outputs:
+        torch.Tensor: Output tensor of shape (B, num_classes, H, W) after applying segmentation and optional resizing.
+    """
+    def __init__(self, model_type: str="B0", shvit_type: str="S4", input_shape: tuple=(3,224,224),
+                 num_convs: int=2, num_stages: int=3, num_classes: int=7, use_resize: bool=True):
+        super(SegFormer_SHViT_SW, self).__init__()
+        
+        assert len(input_shape) == 3, "input_shape must be a tuple of length 3 (C, H, W)"
+        assert input_shape[1] == input_shape[2], "H, and W dimensions must be equal"
+        assert 1 <= num_convs <= 4, "num_convs should be between 1 and 4"
+    
+        model_type = model_type.lower()
+        shvit_type = shvit_type.lower()
+        self.use_resize = use_resize
+ 
+        self.shvit = SHViT_SW(
             in_channels=input_shape[0],
             embed_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["embed_dims"],
             partial_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["partial_dims"],

@@ -307,7 +307,9 @@ class SHSA(nn.Module):
         # print("B, C, H, W: ", B, C, H, W)
         # print("self.dim, self.pdim", self.dim, self.pdim)
         x1, x2 = torch.split(x, [self.pdim, self.dim - self.pdim], dim=1)
-        # print(x1.shape, x2.shape)
+        print("Shape of SHSA: ", x1.shape, x2.shape)
+        ####################################################################################################################################################################################
+
         x1 = self.pre_norm(x1)
         qkv = self.qkv(x1)
         q, k, v = qkv.split([self.qk_dim, self.qk_dim, self.pdim], dim=1)
@@ -350,13 +352,13 @@ class BasicBlock(nn.Module):
     """
     def __init__(self, dim: int, qk_dim: int, pdim: int, block_type: str):
         super(BasicBlock, self).__init__()
-        if block_type == "s":  # for later stages hier "Attention"
+        if block_type == "s":  
             self.conv = Residual(Conv2d_BN(in_channels=dim, out_channels=dim, kernel_size=3, strides=1, padding=1, groups=dim, bn_weight_init=0.0))
             self.mixer = Residual(SHSA(dim=dim, qk_dim=qk_dim, pdim=pdim))
             self.ffn = Residual(FFN(ed=dim, h=int(dim * 2)))
-        elif block_type == "i":  # for early stages # hier "CenterAttention" - 
+        elif block_type == "i":  
             self.conv = Residual(Conv2d_BN(in_channels=dim, out_channels=dim, kernel_size=3, strides=1, padding=1, groups=dim, bn_weight_init=0.0))
-            print(f"{block_type}_Conv: ", self.conv)
+            # print(f"{block_type}_Conv: ", self.conv)
             self.mixer = nn.Identity()
             self.ffn = Residual(FFN(ed=dim, h=int(dim * 2)))
  
