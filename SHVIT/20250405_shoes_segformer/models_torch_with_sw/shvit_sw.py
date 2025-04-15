@@ -299,7 +299,7 @@ class SHSA(nn.Module):
         self.qk_dim = qk_dim
         self.dim = dim
         self.pdim = pdim
- 
+
         self.pre_norm = GroupNorm(num_channels=pdim)
         self.qkv = Conv2d_BN(in_channels=pdim, out_channels=qk_dim*2 + pdim)
         self.proj = nn.Sequential(nn.ReLU(), Conv2d_BN(in_channels=dim, out_channels=dim, bn_weight_init=0.0))
@@ -316,6 +316,7 @@ class SHSA(nn.Module):
         # print("q, k, v: ", q.shape, k.shape, v.shape)
         q, k, v = q.flatten(2), k.flatten(2), v.flatten(2)
         # print("q, k, v: ", q.shape, k.shape, v.shape)
+        
         attn = (q.transpose(-2, -1) @ k) * self.scale
         # print(q.transpose(-2, -1).shape)
         # print("(q.transpose(-2, -1) @ k): ", (q.transpose(-2, -1) @ k).shape)
@@ -325,7 +326,7 @@ class SHSA(nn.Module):
  
         return x
     
-
+    ################################################################################################
 
 class SHCSA(nn.Module):
     """
@@ -498,7 +499,7 @@ class SHViT_SW(nn.Module):
        
 
         for i, (ed, kd, pd, dpth, do, t) in enumerate(zip(self.embed_dim, self.qk_dim, self.partial_dim, self.depth, self.down_ops, self.types)):
-            # print("Zähler: ", i, (ed, kd, pd, dpth, do, t))            
+            # print("Zähler: ", i, (ed, kd, pd, dpth, do, t))
             
             flag_last_stage = False
             if i == length - 1:

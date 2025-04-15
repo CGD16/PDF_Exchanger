@@ -2,8 +2,8 @@ import torch
 from torch import sqrt
 import torch.nn as nn
 
-from models_torch.attention import Attention
-from models_torch.utils import DropPath
+from models_torch_with_sw.attention import Attention
+from models_torch_with_sw.utils import DropPath
 from torch.nn.init import trunc_normal_
 
 
@@ -50,7 +50,7 @@ class CenterAttention(nn.Module):
     """
     # self.attn = CenterAttention(
     #     dim=dim,
-    #     num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+    #     num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, 
     #     attn_drop=attn_drop, proj_drop=drop)
     def __init__(self,
                  dim,
@@ -102,16 +102,23 @@ class CenterAttention(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x, H, W):
+        # print("1) Centerattention (input): ", x.shape) # [1, 16384, 72]
         B, N, C = x.shape
         x = x.reshape(B, H, W, C)
+        # print("2) Centerattention (x.shape): ", x.shape) # [1, 128, 128, 72]
         assert C == self.in_channels
 
         self.pat_size_h = (H+2 * self.pad_size-self.k_size) // self.stride+1
         self.pat_size_w = (W+2 * self.pad_size-self.k_size) // self.stride+1
         self.num_patch = self.pat_size_h * self.pat_size_w
+        # print("3) Centerattention (patch size): ", self.pat_size_h, self.pat_size_w, self.num_patch, self.pad_size, self.num_patch, self.pad_size, self.k_size, self.stride)
+        # 128 128 16384 1 16384 1 3 1
+
+        print("================================== Noch ok!! ==================================") 
 
         # (B, NumHeads, H, W, HeadC)
         q = self.q_proj(x).reshape(B, H, W, self.num_heads, self.head_channel).permute(0, 3, 1, 2, 4)
+        print("================================== ", q.shape)
         # q = self.pad(q).permute(0, 1, 3, 4, 2)  # (B, NumH, H, W, HeadC)
         # query need to be copied by (self.k_size*self.k_size) times
         q = q.unsqueeze(dim=4)
@@ -127,24 +134,37 @@ class CenterAttention(nn.Module):
         H, W = H + self.pad_size * 2, W + self.pad_size * 2
 
         # unfold plays role of conv2d to get patch data
+        # print("4) kv (bbbefore): ", kv.shape) # [2, 1, 1, 130, 130, 72]
         kv = kv.permute(0, 1, 2, 5, 3, 4).reshape(2 * B, -1, H, W)
+        # print("5) kv (before): ", kv.shape) # [2, 72, 130, 130]
         kv = self.unfold(kv)
+        # print("6) kv (after): ", kv.shape) # [2, 648, 16384]
         kv = kv.reshape(2, B, self.num_heads, self.head_channel, self.k_size**2,
                         self.num_patch)  # (2, B, NumH, HC, ks*ks, NumPatch)
         kv = kv.permute(0, 1, 2, 5, 4, 3)  # (2, B, NumH, NumPatch, ks*ks, HC)
+        # print("7) kv (aaafter): ", kv.shape) # [2, 1, 1, 16384, 9, 72]
         k, v = kv[0], kv[1]
 
         # (B, NumH, NumPatch, 1, HeadC)
         q = q.reshape(B, self.num_heads, self.num_patch, 1, self.head_channel)
+        # print("8) k, q, v: ", k.shape, q.shape, v.shape) # torch.Size([1, 1, 16384, 9, 72]) torch.Size([1, 1, 16384, 1, 72]) torch.Size([1, 1, 16384, 9, 72])
+        # print("9) k.transpose(-2, -1): ", k.transpose(-2, -1).shape) # [1, 1, 16384, 72, 9]
         attn = (q @ k.transpose(-2, -1))  # (B, NumH, NumPatch, ks*ks, ks*ks)
+        # print("10) attn: ", attn.shape) # [1, 1, 16384, 1, 9]
         attn = self.softmax(attn)  # softmax last dim
         attn = self.attn_drop(attn)
 
         out = (attn @ v).squeeze(3)  # (B, NumH, NumPatch, HeadC)
+        # print("11) out: ", out.shape) # [1, 1, 16384, 72]
         out = out.permute(0, 2, 1, 3).reshape(B, self.pat_size_h, self.pat_size_w, C)  # (B, Ph, Pw, C)
         out = self.proj(out)
         out = self.proj_drop(out)
+        # print("12) out (before reshape): ", out.shape) # [1, 128, 128, 72]
         out = out.reshape(B, -1, C)
+        # print("13) out (after reshape): ", out.shape) # [1, 16384, 72]
+        # print()
+        # print("========================"*5)
+        # print()
         return out
 
 class Attention(nn.Module):

@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models_torch.modules_3d import MixVisionTransformer3D
-from models_torch.head_3d import SegFormerHead3D
-from models_torch.utils_3d import ResizeLayer3D
-from models_torch.shvit_3d import SHViT3D
+from models_torch_with_sw.modules_3d_sw import MixVisionTransformer3D
+from models_torch_with_sw.head_3d import SegFormerHead3D
+from models_torch_with_sw.utils_3d import ResizeLayer3D
+from models_torch_with_sw.shvit_3d_sw import SHViT3D_SW
 
 MODEL_CONFIGS = {
     "mit_b0": {
@@ -122,7 +122,7 @@ class SegFormer3D(nn.Module):
     
     
     
-class SegFormer3D_SHViT(nn.Module):   
+class SegFormer3D_SHViT_SW(nn.Module):   
     """
     SegFormer3D_SHViT: A 3D segmentation model leveraging SHViT, SegFormerHead, and optional resizing.
  
@@ -145,7 +145,7 @@ class SegFormer3D_SHViT(nn.Module):
     """
     def __init__(self, model_type: str="B0", shvit_type: str="S4", input_shape: tuple=(3,224,224,224),
                  num_convs: int=2, num_stages: int=3, num_classes: int=7, use_resize: bool=True):
-        super(SegFormer3D_SHViT, self).__init__()
+        super(SegFormer3D_SHViT_SW, self).__init__()
 
         assert len(input_shape) == 4, "input_shape must be a tuple of length 4 (C, D, H, W)"
         assert input_shape[1] == input_shape[2] == input_shape[3], "D, H, and W dimensions must be equal"
@@ -155,7 +155,7 @@ class SegFormer3D_SHViT(nn.Module):
         shvit_type = shvit_type.lower()
         self.use_resize = use_resize
  
-        self.shvit = SHViT3D(
+        self.shvit = SHViT3D_SW(
             in_channels=input_shape[0],
             embed_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["embed_dims"],
             partial_dims=SHVIT_CONFIGS[f"SHViT_{shvit_type}"]["partial_dims"],
