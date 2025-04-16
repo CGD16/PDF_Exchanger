@@ -107,8 +107,8 @@ class SegFormer(nn.Module):
 
         self.seg_former_head = SegFormerHead(
             num_classes=num_classes,
-            decode_dim=MODEL_CONFIGS[f"mit_{model_type}"]["decode_dim"],
-            input_dims=MODEL_CONFIGS[f"mit_{model_type}"]["embed_dims"]
+            input_dims=MODEL_CONFIGS[f"mit_{model_type}"]["embed_dims"],
+            decode_dim=MODEL_CONFIGS[f"mit_{model_type}"]["decode_dim"]
         )
 
         self.resize_layer = ResizeLayer(input_shape[1], input_shape[2])
