@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 # https://github.com/f-dangel/unfoldNd
-import unfoldNd
+import unfoldNd # hat für 3d nicht geklappt
 
 
 
